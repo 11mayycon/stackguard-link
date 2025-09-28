@@ -15,6 +15,7 @@ const badgeVariants = cva(
         success: "status-badge-success",
         warning: "status-badge-warning",
         error: "status-badge-error",
+        info: "border-transparent bg-info text-info-foreground hover:bg-info/80",
       },
     },
     defaultVariants: {

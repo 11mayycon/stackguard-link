@@ -99,6 +99,8 @@ serve(async (req) => {
         return await createProduct(supabaseClient, data, user);
       case 'adjust_stock':
         return await adjustStock(supabaseClient, data, user);
+      case 'update_yarn':
+        return await updateYarn(supabaseClient, data, user);
       default:
         throw new Error('Invalid operation');
     }
@@ -284,6 +286,60 @@ async function adjustStock(supabaseClient: any, data: any, user: any) {
       success: true, 
       product: { ...product, quantity: newQuantity },
       movement: { type, quantityChange, newQuantity }
+    }),
+    { 
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    }
+  );
+}
+
+async function updateYarn(supabaseClient: any, data: any, user: any) {
+  const { productId, yarnCode } = data;
+
+  // Get product
+  const { data: product, error: productError } = await supabaseClient
+    .from('products')
+    .select('*')
+    .eq('id', productId)
+    .single();
+
+  if (productError || !product) {
+    throw new Error('Produto não encontrado');
+  }
+
+  // Update EAN
+  const { error: updateError } = await supabaseClient
+    .from('products')
+    .update({
+      ean: yarnCode,
+      last_activity: new Date().toISOString()
+    })
+    .eq('id', productId);
+
+  if (updateError) throw updateError;
+
+  // Record in sales history
+  const { error: historyError } = await supabaseClient
+    .from('historico_vendas')
+    .insert({
+      codigo_produto: product.code,
+      produto_id: product.id,
+      quantidade_ajustada: 0,
+      tipo: 'ajuste',
+      observacao: `Yarn atualizado para: ${yarnCode}`,
+      usuario_id: user.id,
+      created_at: new Date().toISOString()
+    });
+
+  if (historyError) throw historyError;
+
+  console.log(`Yarn updated for ${product.code}: ${yarnCode}`);
+
+  return new Response(
+    JSON.stringify({ 
+      success: true, 
+      product: { ...product, ean: yarnCode }
     }),
     { 
       status: 200,

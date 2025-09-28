@@ -1,4 +1,4 @@
-import { Package, Search, Settings, BarChart3, Clock, AlertTriangle } from 'lucide-react';
+import { Package, Search, Settings, BarChart3, Clock, AlertTriangle, Barcode } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -42,6 +42,14 @@ export default function Dashboard() {
       path: '/vendas',
       color: 'warning',
       features: ['Histórico de vendas', 'Ajustes de estoque', 'Auditoria completa']
+    },
+    {
+      title: 'Cadastrar Yarn',
+      description: 'Localize um produto pelo nome, selecione-o e cadastre o código Yarn manualmente ou via escaneamento pela câmera',
+      icon: Barcode,
+      path: '/cadastrar-yarn',
+      color: 'info',
+      features: ['Buscar produto por nome', 'Digitar Yarn manualmente', 'Escanear Yarn pela câmera do celular']
     }
   ];
 
@@ -51,6 +59,7 @@ export default function Dashboard() {
       case 'success': return 'success';
       case 'secondary': return 'secondary';
       case 'warning': return 'warning';
+      case 'info': return 'info';
       default: return 'default';
     }
   };
@@ -142,6 +151,7 @@ export default function Dashboard() {
                           {card.color === 'success' && 'Controle'}
                           {card.color === 'secondary' && 'Histórico'}
                           {card.color === 'warning' && 'Relatório'}
+                          {card.color === 'info' && 'Código'}
                         </Badge>
                       </div>
                     </div>

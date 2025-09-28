@@ -11,6 +11,7 @@ import ConsultarEstoque from "./pages/ConsultarEstoque";
 import ControlarEstoque from "./pages/ControlarEstoque";
 import HistoricoMovimentacoes from "./pages/HistoricoMovimentacoes";
 import HistoricoVendas from "./pages/HistoricoVendas";
+import CadastrarYarn from "./pages/CadastrarYarn";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -47,6 +48,11 @@ const App = () => (
             <Route path="/vendas" element={
               <ProtectedRoute>
                 <HistoricoVendas />
+              </ProtectedRoute>
+            } />
+            <Route path="/cadastrar-yarn" element={
+              <ProtectedRoute>
+                <CadastrarYarn />
               </ProtectedRoute>
             } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

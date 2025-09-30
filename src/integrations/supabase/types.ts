@@ -19,6 +19,7 @@ export type Database = {
           codigo_produto: string
           created_at: string | null
           id: string
+          image_urls: string[] | null
           observacao: string | null
           produto_id: string | null
           quantidade_ajustada: number
@@ -29,6 +30,7 @@ export type Database = {
           codigo_produto: string
           created_at?: string | null
           id?: string
+          image_urls?: string[] | null
           observacao?: string | null
           produto_id?: string | null
           quantidade_ajustada: number
@@ -39,11 +41,44 @@ export type Database = {
           codigo_produto?: string
           created_at?: string | null
           id?: string
+          image_urls?: string[] | null
           observacao?: string | null
           produto_id?: string | null
           quantidade_ajustada?: number
           tipo?: string
           usuario_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "historico_vendas_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      logs: {
+        Row: {
+          action: string
+          created_at: string | null
+          details: Json | null
+          id: string
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -79,6 +114,10 @@ export type Database = {
       }
       profiles: {
         Row: {
+          banco: string | null
+          cargo: string | null
+          chave_pix: string | null
+          cpf: string | null
           created_at: string | null
           email: string | null
           id: string
@@ -86,18 +125,71 @@ export type Database = {
           role: string | null
         }
         Insert: {
-          created_at?: string | null
-          email?: string | null
-          id: string
-          nome_completo?: string | null
-          role?: string | null
-        }
-        Update: {
+          banco?: string | null
+          cargo?: string | null
+          chave_pix?: string | null
+          cpf?: string | null
           created_at?: string | null
           email?: string | null
           id?: string
           nome_completo?: string | null
           role?: string | null
+        }
+        Update: {
+          banco?: string | null
+          cargo?: string | null
+          chave_pix?: string | null
+          cpf?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          nome_completo?: string | null
+          role?: string | null
+        }
+        Relationships: []
+      }
+      roles: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+          permissions: Json | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          permissions?: Json | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          permissions?: Json | null
+        }
+        Relationships: []
+      }
+      settings: {
+        Row: {
+          created_at: string | null
+          id: string
+          key: string
+          value: Json | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          key: string
+          value?: Json | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          key?: string
+          value?: Json | null
         }
         Relationships: []
       }
@@ -145,15 +237,121 @@ export type Database = {
           },
         ]
       }
+      waste_records: {
+        Row: {
+          created_at: string
+          id: string
+          images_urls: string[] | null
+          notes: string | null
+          product_id: string
+          quantity_wasted: number
+          reason: string
+          user_email: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          images_urls?: string[] | null
+          notes?: string | null
+          product_id: string
+          quantity_wasted: number
+          reason: string
+          user_email?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          images_urls?: string[] | null
+          notes?: string | null
+          product_id?: string
+          quantity_wasted?: number
+          reason?: string
+          user_email?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "waste_records_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      create_auth_user_if_not_exists: {
+        Args: { p_email: string }
+        Returns: string
+      }
+      create_profile_with_cpf: {
+        Args: { p_cpf: string; p_nome_completo: string; p_role?: string }
+        Returns: Json
+      }
+      execute_sql: {
+        Args: { query: string }
+        Returns: Json
+      }
+      get_top_selling_products: {
+        Args: { limit_count: number }
+        Returns: {
+          code: string
+          id: string
+          name: string
+          total_sold: number
+        }[]
+      }
+      get_unsold_products: {
+        Args: { days_threshold: number }
+        Returns: {
+          code: string
+          id: string
+          last_sold_at: string
+          name: string
+          quantity: number
+        }[]
+      }
+      is_admin: {
+        Args: { p_user_id: string }
+        Returns: boolean
+      }
+      register_sale_and_update_stock: {
+        Args: {
+          p_product_id: string
+          p_quantity: number
+          p_vendedor_id: string
+        }
+        Returns: undefined
+      }
+      register_waste_and_update_stock: {
+        Args: {
+          p_images?: string[]
+          p_notes?: string
+          p_product_id: string
+          p_quantity: number
+          p_reason: string
+          p_user_email?: string
+        }
+        Returns: Json
+      }
+      register_waste_transaction: {
+        Args: {
+          p_image_urls: string[]
+          p_notes: string
+          p_product_id: string
+          p_quantity_wasted: number
+          p_reason: string
+          p_user_email: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
-      movement_type: "initial" | "add" | "remove"
+      movement_type: "initial" | "add" | "remove" | "waste"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -281,7 +479,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      movement_type: ["initial", "add", "remove"],
+      movement_type: ["initial", "add", "remove", "waste"],
     },
   },
 } as const

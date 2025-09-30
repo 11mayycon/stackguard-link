@@ -48,17 +48,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Query profiles table to find user by CPF
       const { data: profileData, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select('id, nome_completo, email, role, cpf, cargo, banco, chave_pix, created_at')
         .eq('cpf', cleanCpf)
-        .maybeSingle();
+        .limit(1);
 
-      if (error || !profileData) {
+      if (error || !profileData || profileData.length === 0) {
         return { error: { message: 'CPF não encontrado no sistema' } };
       }
 
+      const profile = profileData[0];
       // Store profile in state and localStorage
-      setProfile(profileData);
-      localStorage.setItem('stackguard_profile', JSON.stringify(profileData));
+      setProfile(profile);
+      localStorage.setItem('stackguard_profile', JSON.stringify(profile));
       
       return { error: null };
     } catch (error) {
@@ -76,14 +77,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .from('profiles')
         .select('id')
         .eq('cpf', cleanCpf)
-        .maybeSingle();
+        .limit(1);
 
-      if (existingProfile) {
+      if (existingProfile && existingProfile.length > 0) {
         return { error: { message: 'CPF já cadastrado no sistema' } };
       }
 
-      // Create new profile using raw SQL to avoid TypeScript issues
-      const { data: newProfile, error } = await supabase.rpc('create_profile_with_cpf', {
+      // Use the RPC function to create new profile
+      const { data: result, error } = await supabase.rpc('create_profile_with_cpf', {
         p_cpf: cleanCpf,
         p_nome_completo: nomeCompleto,
         p_role: 'funcionario'

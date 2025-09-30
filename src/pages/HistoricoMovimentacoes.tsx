@@ -15,7 +15,7 @@ interface StockMovement {
   id: string;
   product_code: string;
   product_description: string;
-  type: 'initial' | 'add' | 'remove';
+  type: 'initial' | 'add' | 'remove' | 'waste';
   quantity_change: number;
   new_quantity: number;
   timestamp: string;

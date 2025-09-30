@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
-import { Package, Mail, Lock, User } from 'lucide-react';
+import { Package, CreditCard, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -10,33 +10,37 @@ import { useAuth } from '@/hooks/useAuth';
 import { z } from 'zod';
 
 const authSchema = z.object({
-  email: z.string().email('Email inválido').min(1, 'Email é obrigatório'),
-  password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
+  cpf: z.string().min(11, 'CPF deve ter 11 dígitos').max(11, 'CPF deve ter 11 dígitos'),
   nomeCompleto: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres').optional(),
 });
 
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [cpf, setCpf] = useState('');
   const [nomeCompleto, setNomeCompleto] = useState('');
   const [loading, setLoading] = useState(false);
   
-  const { signIn, signUp, user } = useAuth();
+  const { signInWithCpf, signUpWithCpf, profile } = useAuth();
   const { toast } = useToast();
 
-  if (user) {
+  if (profile) {
     return <Navigate to="/" replace />;
   }
+
+  const formatCpf = (value: string) => {
+    const numbers = value.replace(/\D/g, '');
+    return numbers.slice(0, 11);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
+      const cleanCpf = cpf.replace(/\D/g, '');
+      
       const data = {
-        email: email.trim(),
-        password,
+        cpf: cleanCpf,
         ...(isLogin ? {} : { nomeCompleto: nomeCompleto.trim() })
       };
 
@@ -53,20 +57,18 @@ export default function AuthPage() {
 
       let result;
       if (isLogin) {
-        result = await signIn(email, password);
+        result = await signInWithCpf(cleanCpf);
       } else {
-        result = await signUp(email, password, nomeCompleto);
+        result = await signUpWithCpf(cleanCpf, nomeCompleto);
       }
 
       if (result.error) {
         let errorMessage = 'Erro inesperado. Tente novamente.';
         
-        if (result.error.message.includes('Invalid login credentials')) {
-          errorMessage = 'Email ou senha incorretos.';
-        } else if (result.error.message.includes('User already registered')) {
-          errorMessage = 'Este email já está cadastrado. Tente fazer login.';
-        } else if (result.error.message.includes('Email not confirmed')) {
-          errorMessage = 'Verifique seu email e confirme sua conta antes de continuar.';
+        if (result.error.message.includes('CPF não encontrado')) {
+          errorMessage = 'CPF não encontrado no sistema.';
+        } else if (result.error.message.includes('CPF já cadastrado')) {
+          errorMessage = 'Este CPF já está cadastrado. Tente fazer login.';
         }
 
         toast({
@@ -77,7 +79,7 @@ export default function AuthPage() {
       } else if (!isLogin) {
         toast({
           title: "Cadastro realizado!",
-          description: "Verifique seu email para confirmar sua conta.",
+          description: "Usuário cadastrado com sucesso.",
           variant: "default"
         });
         setIsLogin(true);
@@ -121,8 +123,8 @@ export default function AuthPage() {
             </CardTitle>
             <CardDescription>
               {isLogin 
-                ? 'Entre com sua conta para acessar o sistema'
-                : 'Crie sua conta para começar a usar o sistema'
+                ? 'Digite seu CPF para acessar o sistema'
+                : 'Digite seu CPF e nome para criar sua conta'
               }
             </CardDescription>
           </CardHeader>
@@ -150,36 +152,19 @@ export default function AuthPage() {
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-medium">
-                  Email
+                <Label htmlFor="cpf" className="text-sm font-medium">
+                  CPF
                 </Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <CreditCard className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
-                    id="email"
-                    type="email"
-                    placeholder="seu@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    id="cpf"
+                    type="text"
+                    placeholder="000.000.000-00"
+                    value={cpf}
+                    onChange={(e) => setCpf(formatCpf(e.target.value))}
                     className="pl-10"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-sm font-medium">
-                  Senha
-                </Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10"
+                    maxLength={11}
                     required
                   />
                 </div>
@@ -220,7 +205,7 @@ export default function AuthPage() {
 
         {/* Info */}
         <div className="text-center text-sm text-muted-foreground">
-          <p>Acesso seguro com autenticação Supabase</p>
+          <p>Acesso seguro com validação via CPF</p>
         </div>
       </div>
     </div>

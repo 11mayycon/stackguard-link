@@ -1,14 +1,15 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { Profile } from '@/types/profile';
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
-  profile: any;
+  profile: Profile | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string, nomeCompleto: string) => Promise<{ error: any }>;
+  signInWithCpf: (cpf: string) => Promise<{ error: any }>;
+  signUpWithCpf: (cpf: string, nomeCompleto: string) => Promise<{ error: any }>;
   signOut: () => Promise<{ error: any }>;
 }
 
@@ -17,73 +18,99 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [profile, setProfile] = useState<any>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        if (session?.user) {
-          // Fetch user profile
-          setTimeout(async () => {
-            const { data: profileData } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('id', session.user.id)
-              .single();
-            setProfile(profileData);
-          }, 0);
-        } else {
-          setProfile(null);
+    // Check for existing profile on mount
+    const checkProfile = async () => {
+      try {
+        const storedProfile = localStorage.getItem('stackguard_profile');
+        if (storedProfile) {
+          const profileData = JSON.parse(storedProfile);
+          setProfile(profileData);
         }
-        
+      } catch (error) {
+        console.error('Error loading stored profile:', error);
+      } finally {
         setLoading(false);
       }
-    );
+    };
 
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (!session) {
-        setLoading(false);
-      }
-    });
-
-    return () => subscription.unsubscribe();
+    checkProfile();
   }, []);
 
-  const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    return { error };
+  const signInWithCpf = async (cpf: string) => {
+    try {
+      // Clean CPF (remove any non-numeric characters)
+      const cleanCpf = cpf.replace(/\D/g, '');
+      
+      // Query profiles table to find user by CPF
+      const { data: profileData, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('cpf', cleanCpf)
+        .maybeSingle();
+
+      if (error || !profileData) {
+        return { error: { message: 'CPF não encontrado no sistema' } };
+      }
+
+      // Store profile in state and localStorage
+      setProfile(profileData);
+      localStorage.setItem('stackguard_profile', JSON.stringify(profileData));
+      
+      return { error: null };
+    } catch (error) {
+      return { error: { message: 'Erro ao fazer login' } };
+    }
   };
 
-  const signUp = async (email: string, password: string, nomeCompleto: string) => {
-    const redirectUrl = `${window.location.origin}/`;
-    
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: redirectUrl,
-        data: {
-          nome_completo: nomeCompleto,
-        }
+  const signUpWithCpf = async (cpf: string, nomeCompleto: string) => {
+    try {
+      // Clean CPF
+      const cleanCpf = cpf.replace(/\D/g, '');
+      
+      // Check if CPF already exists
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('cpf', cleanCpf)
+        .maybeSingle();
+
+      if (existingProfile) {
+        return { error: { message: 'CPF já cadastrado no sistema' } };
       }
-    });
-    return { error };
+
+      // Create new profile using raw SQL to avoid TypeScript issues
+      const { data: newProfile, error } = await supabase.rpc('create_profile_with_cpf', {
+        p_cpf: cleanCpf,
+        p_nome_completo: nomeCompleto,
+        p_role: 'funcionario'
+      });
+
+      if (error) {
+        return { error: { message: 'Erro ao criar usuário' } };
+      }
+
+      return { error: null };
+    } catch (error) {
+      return { error: { message: 'Erro ao criar usuário' } };
+    }
   };
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    return { error };
+    try {
+      // Clear profile from state and localStorage
+      setProfile(null);
+      setUser(null);
+      setSession(null);
+      localStorage.removeItem('stackguard_profile');
+      
+      return { error: null };
+    } catch (error) {
+      return { error: { message: 'Erro ao fazer logout' } };
+    }
   };
 
   const value = {
@@ -91,8 +118,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     session,
     profile,
     loading,
-    signIn,
-    signUp,
+    signInWithCpf,
+    signUpWithCpf,
     signOut,
   };
 
